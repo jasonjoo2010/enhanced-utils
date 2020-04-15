@@ -25,6 +25,10 @@ type DistLock struct {
 	reentry   bool
 }
 
+// NewMutex returns a non-reentry distributed lock
+//	namespace is used to separate different projects
+//	expire indicates the expiration of an active lock and it will be removed if no {Keep} and {Unlock} was invoked during this.
+//	store decides which storage it uses
 func NewMutex(namespace string, expire time.Duration, store Store) *DistLock {
 	return &DistLock{
 		store:     store,
@@ -35,6 +39,10 @@ func NewMutex(namespace string, expire time.Duration, store Store) *DistLock {
 	}
 }
 
+// NewMutex returns a reentry distributed lock
+//	namespace is used to separate different projects
+//	expire indicates the expiration of an active lock and it will be removed if no {Keep} and {Unlock} was invoked during this.
+//	store decides which storage it uses
 func NewReentry(namespace string, expire time.Duration, store Store) *DistLock {
 	return &DistLock{
 		store:     store,
