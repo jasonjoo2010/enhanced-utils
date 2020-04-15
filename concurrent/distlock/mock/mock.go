@@ -35,17 +35,35 @@ func (m *MockLocker) Exists(key string) bool {
 	m.Lock()
 	defer m.Unlock()
 	t, ok := m.store[key]
-	return ok && t.dueTo > time.Now().UnixNano()
+	if ok && t.dueTo < time.Now().UnixNano() {
+		delete(m.store, key)
+		ok = false
+	}
+	return ok
 }
 
 func (m *MockLocker) Get(key string) string {
 	m.Lock()
 	defer m.Unlock()
 	t, ok := m.store[key]
-	if !ok || time.Now().UnixNano() > t.dueTo {
+	if ok && t.dueTo < time.Now().UnixNano() {
+		delete(m.store, key)
+		ok = false
+	}
+	if ok {
+		return t.val
+	} else {
 		return ""
 	}
-	return t.val
+}
+
+func (m *MockLocker) Set(key, val string, expire time.Duration) {
+	m.Lock()
+	defer m.Unlock()
+	m.store[key] = &item{
+		val:   val,
+		dueTo: time.Now().UnixNano() + expire.Nanoseconds(),
+	}
 }
 
 func (m *MockLocker) SetIfAbsent(key, val string, expire time.Duration) bool {

@@ -1,6 +1,7 @@
 package distlock
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -27,18 +28,32 @@ func TestParse(t *testing.T) {
 }
 
 func TestKey(t *testing.T) {
-	lock := New("", &mock.MockLocker{})
+	lock := NewMutex("", 0, &mock.MockLocker{})
 	assert.Equal(t, "lock::distributed-lock::asdf", lock.key("asdf"))
 
-	lock = New("test", &mock.MockLocker{})
+	lock = NewMutex("test", 0, &mock.MockLocker{})
 	assert.Equal(t, "lock::test::asdf", lock.key("asdf"))
 }
 
 func TestVerify(t *testing.T) {
-	store := &mock.MockLocker{}
-	lock := New("test", store)
+	store := mock.New()
+	lock := NewMutex("test", 500*time.Second, store)
 	key := lock.key("demo")
 
-	store.SetIfAbsent(key, "", 500*time.Second)
+	store.Delete(key)
+	valid, myself := lock.verify(key)
+	assert.False(t, valid)
 
+	store.Set(key, "", 500*time.Second)
+	valid, myself = lock.verify(key)
+	assert.False(t, valid)
+
+	store.Set(key, fmt.Sprintf("%s|%d", lock.uuid, time.Now().UnixNano()/1e6-501*1e3), 500*time.Second)
+	valid, myself = lock.verify(key)
+	assert.False(t, valid)
+
+	store.Set(key, fmt.Sprintf("%s|%d", lock.uuid, time.Now().UnixNano()/1e6-499*1e3), 500*time.Second)
+	valid, myself = lock.verify(key)
+	assert.True(t, valid)
+	assert.True(t, myself)
 }

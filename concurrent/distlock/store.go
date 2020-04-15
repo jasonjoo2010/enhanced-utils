@@ -9,5 +9,6 @@ type Store interface {
 	Exists(key string) bool
 	Get(key string) string
 	SetIfAbsent(key, val string, expire time.Duration) bool
+	Set(key, val string, expire time.Duration)
 	Delete(key string)
 }

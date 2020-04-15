@@ -23,7 +23,7 @@ func New(addrs []string) *RedisLocker {
 }
 
 func (r *RedisLocker) Keep(key, val string, expire time.Duration) {
-	r.client.Set(key, val, duration)
+	r.client.Set(key, val, expire)
 }
 
 func (r *RedisLocker) Exists(key string) bool {
@@ -32,6 +32,10 @@ func (r *RedisLocker) Exists(key string) bool {
 
 func (r *RedisLocker) Get(key string) string {
 	return r.client.Get(key).Val()
+}
+
+func (r *RedisLocker) Set(key, val string, expire time.Duration) {
+	r.client.Set(key, val, expire)
 }
 
 func (r *RedisLocker) SetIfAbsent(key, val string, expire time.Duration) bool {

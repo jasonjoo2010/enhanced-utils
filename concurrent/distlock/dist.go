@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jasonjoo2010/enhanced-utils/strutils"
 	"github.com/prometheus/common/log"
 )
 
@@ -21,13 +22,26 @@ type DistLock struct {
 	namespace string
 	uuid      string
 	expire    time.Duration
+	reentry   bool
 }
 
-func New(namespace string, store Store) *DistLock {
+func NewMutex(namespace string, expire time.Duration, store Store) *DistLock {
 	return &DistLock{
 		store:     store,
 		namespace: namespace,
-		uuid:      "", // XXX
+		uuid:      strutils.RandString(20),
+		expire:    expire,
+		reentry:   false,
+	}
+}
+
+func NewReentry(namespace string, expire time.Duration, store Store) *DistLock {
+	return &DistLock{
+		store:     store,
+		namespace: namespace,
+		uuid:      strutils.RandString(20),
+		expire:    expire,
+		reentry:   true,
 	}
 }
 
@@ -59,6 +73,17 @@ func (l *DistLock) key(target interface{}) string {
 	return fmt.Sprintf("lock::%s::%v", ns, target)
 }
 
+// Keep renew a lock held already for another {expire} time
+func (l *DistLock) Keep(target interface{}) {
+	key := l.key(target)
+	valid, myself := l.verify(key)
+	if valid && myself {
+		val := fmt.Sprintf("%s|%d", l.uuid, time.Now().UnixNano()/1e6)
+		l.store.Set(key, val, l.expire)
+	}
+}
+
+// Lock try to lock the specified resource in {wait} time or return a LockFailed error
 func (l *DistLock) Lock(target interface{}, wait time.Duration) error {
 	for wait > 0 {
 		succ := l.TryLock(target)
@@ -72,26 +97,36 @@ func (l *DistLock) Lock(target interface{}, wait time.Duration) error {
 }
 
 // verify an existed lock data structure and return true when valid
-func (l *DistLock) verify(key string) bool {
+//	valid indicates whether the lock is valid
+//	myself indicates whether the owner is myself
+func (l *DistLock) verify(key string) (valid bool, myself bool) {
 	val := l.store.Get(key)
 	// XXX: Pay attention to the phantom reads of redis (double reading could solve it, but confirmed to do that)
 	uuid, created := parseLockData(val)
 	if uuid == "" {
-		return false
+		return
 	}
-	diff := time.Duration(time.Now().UnixNano())/time.Millisecond - time.Duration(created)
+	diff := time.Duration(time.Now().UnixNano()-created*1e6) * time.Nanosecond
 	if diff > l.expire {
-		return false
+		return
 	}
-	return true
+	myself = uuid == l.uuid
+	valid = true
+	return
 }
 
 func (l *DistLock) TryLock(target interface{}) bool {
 	key := l.key(target)
 	if l.store.Exists(key) {
 		// verify the lock
-		if l.verify(key) {
+		if valid, myself := l.verify(key); valid {
 			// valid lock
+			if l.reentry && myself {
+				// allow reentry, check whether already locked and update it
+				val := fmt.Sprintf("%s|%d", l.uuid, time.Now().UnixNano()/1e6)
+				l.store.Set(key, val, l.expire)
+				return true
+			}
 			return false
 		}
 		log.Warnf("Force release an invalid lock for %v", target)
@@ -99,7 +134,8 @@ func (l *DistLock) TryLock(target interface{}) bool {
 	}
 	// try to lock
 	val := fmt.Sprintf("%s|%d", l.uuid, time.Now().UnixNano()/1e6)
-	return l.store.SetIfAbsent(key, val, l.expire)
+	succ := l.store.SetIfAbsent(key, val, l.expire)
+	return succ
 }
 
 // UnLock releases the lock of specified resource id and return true for success
