@@ -28,16 +28,16 @@ func TestParse(t *testing.T) {
 }
 
 func TestKey(t *testing.T) {
-	lock := NewMutex("", 0, &mock.MockLocker{})
+	lock := NewMutex("", 0, &mock.MockLocker{}).(*DistLockImpl)
 	assert.Equal(t, "lock::distributed-lock::asdf", lock.key("asdf"))
 
-	lock = NewMutex("test", 0, &mock.MockLocker{})
+	lock = NewMutex("test", 0, &mock.MockLocker{}).(*DistLockImpl)
 	assert.Equal(t, "lock::test::asdf", lock.key("asdf"))
 }
 
 func TestVerify(t *testing.T) {
 	store := mock.New()
-	lock := NewMutex("test", 500*time.Second, store)
+	lock := NewMutex("test", 500*time.Second, store).(*DistLockImpl)
 	key := lock.key("demo")
 
 	store.Delete(key)

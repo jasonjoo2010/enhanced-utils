@@ -17,7 +17,7 @@ const TRY_INTERVAL time.Duration = 10 * time.Millisecond
 
 var LockFailed = errors.New("Lock failed")
 
-type DistLock struct {
+type DistLockImpl struct {
 	store     Store
 	namespace string
 	uuid      string
@@ -29,8 +29,8 @@ type DistLock struct {
 //	namespace is used to separate different projects
 //	expire indicates the expiration of an active lock and it will be removed if no {Keep} and {Unlock} was invoked during this.
 //	store decides which storage it uses
-func NewMutex(namespace string, expire time.Duration, store Store) *DistLock {
-	return &DistLock{
+func NewMutex(namespace string, expire time.Duration, store Store) DistLock {
+	return &DistLockImpl{
 		store:     store,
 		namespace: namespace,
 		uuid:      strutils.RandString(20),
@@ -43,8 +43,8 @@ func NewMutex(namespace string, expire time.Duration, store Store) *DistLock {
 //	namespace is used to separate different projects
 //	expire indicates the expiration of an active lock and it will be removed if no {Keep} and {Unlock} was invoked during this.
 //	store decides which storage it uses
-func NewReentry(namespace string, expire time.Duration, store Store) *DistLock {
-	return &DistLock{
+func NewReentry(namespace string, expire time.Duration, store Store) DistLock {
+	return &DistLockImpl{
 		store:     store,
 		namespace: namespace,
 		uuid:      strutils.RandString(20),
@@ -73,7 +73,7 @@ func parseLockData(data string) (uuid string, created int64) {
 	return
 }
 
-func (l *DistLock) key(target interface{}) string {
+func (l *DistLockImpl) key(target interface{}) string {
 	ns := l.namespace
 	if ns == "" {
 		ns = "distributed-lock"
@@ -81,8 +81,7 @@ func (l *DistLock) key(target interface{}) string {
 	return fmt.Sprintf("lock::%s::%v", ns, target)
 }
 
-// Keep renew a lock held already for another {expire} time
-func (l *DistLock) Keep(target interface{}) {
+func (l *DistLockImpl) Keep(target interface{}) {
 	key := l.key(target)
 	valid, myself := l.verify(key)
 	if valid && myself {
@@ -91,8 +90,7 @@ func (l *DistLock) Keep(target interface{}) {
 	}
 }
 
-// Lock try to lock the specified resource in {wait} time or return a LockFailed error
-func (l *DistLock) Lock(target interface{}, wait time.Duration) error {
+func (l *DistLockImpl) Lock(target interface{}, wait time.Duration) error {
 	for wait > 0 {
 		succ := l.TryLock(target)
 		if succ {
@@ -107,7 +105,7 @@ func (l *DistLock) Lock(target interface{}, wait time.Duration) error {
 // verify an existed lock data structure and return true when valid
 //	valid indicates whether the lock is valid
 //	myself indicates whether the owner is myself
-func (l *DistLock) verify(key string) (valid bool, myself bool) {
+func (l *DistLockImpl) verify(key string) (valid bool, myself bool) {
 	val := l.store.Get(key)
 	// XXX: Pay attention to the phantom reads of redis (double reading could solve it, but confirmed to do that)
 	uuid, created := parseLockData(val)
@@ -123,7 +121,7 @@ func (l *DistLock) verify(key string) (valid bool, myself bool) {
 	return
 }
 
-func (l *DistLock) TryLock(target interface{}) bool {
+func (l *DistLockImpl) TryLock(target interface{}) bool {
 	key := l.key(target)
 	if l.store.Exists(key) {
 		// verify the lock
@@ -146,8 +144,7 @@ func (l *DistLock) TryLock(target interface{}) bool {
 	return succ
 }
 
-// UnLock releases the lock of specified resource id and return true for success
-func (l *DistLock) UnLock(target interface{}) bool {
+func (l *DistLockImpl) UnLock(target interface{}) bool {
 	key := l.key(target)
 	uuid, _ := parseLockData(l.store.Get(key))
 	if uuid != l.uuid {
