@@ -10,4 +10,5 @@ type DistLock interface {
 	TryLock(target interface{}) bool
 	// UnLock releases the lock of specified resource id and return true for success
 	UnLock(target interface{}) bool
+	Close()
 }

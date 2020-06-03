@@ -56,4 +56,7 @@ func TestVerify(t *testing.T) {
 	valid, myself = lock.verify(key)
 	assert.True(t, valid)
 	assert.True(t, myself)
+
+	store.Close()
+	assert.Panics(t, func() { lock.Lock("test") })
 }

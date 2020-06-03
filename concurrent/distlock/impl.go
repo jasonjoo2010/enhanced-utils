@@ -81,12 +81,16 @@ func (l *DistLockImpl) key(target interface{}) string {
 	return fmt.Sprintf("lock::%s::%v", ns, target)
 }
 
+func (l *DistLockImpl) Close() {
+	l.store.Close()
+}
+
 func (l *DistLockImpl) Keep(target interface{}) {
 	key := l.key(target)
 	valid, myself := l.verify(key)
 	if valid && myself {
 		val := fmt.Sprintf("%s|%d", l.uuid, time.Now().UnixNano()/1e6)
-		l.store.Set(key, val, l.expire)
+		l.store.Set(&LockKey{l.namespace, key}, val, l.expire)
 	}
 }
 
@@ -106,7 +110,8 @@ func (l *DistLockImpl) Lock(target interface{}, wait time.Duration) error {
 //	valid indicates whether the lock is valid
 //	myself indicates whether the owner is myself
 func (l *DistLockImpl) verify(key string) (valid bool, myself bool) {
-	val := l.store.Get(key)
+	lockKey := &LockKey{l.namespace, key}
+	val := l.store.Get(lockKey)
 	// XXX: Pay attention to the phantom reads of redis (double reading could solve it, but confirmed to do that)
 	uuid, created := parseLockData(val)
 	if uuid == "" {
@@ -123,34 +128,36 @@ func (l *DistLockImpl) verify(key string) (valid bool, myself bool) {
 
 func (l *DistLockImpl) TryLock(target interface{}) bool {
 	key := l.key(target)
-	if l.store.Exists(key) {
+	lockKey := &LockKey{l.namespace, key}
+	if l.store.Exists(lockKey) {
 		// verify the lock
 		if valid, myself := l.verify(key); valid {
 			// valid lock
 			if l.reentry && myself {
 				// allow reentry, check whether already locked and update it
 				val := fmt.Sprintf("%s|%d", l.uuid, time.Now().UnixNano()/1e6)
-				l.store.Set(key, val, l.expire)
+				l.store.Set(lockKey, val, l.expire)
 				return true
 			}
 			return false
 		}
 		log.Warnf("Force release an invalid lock for %v", target)
-		l.store.Delete(key)
+		l.store.Delete(lockKey)
 	}
 	// try to lock
 	val := fmt.Sprintf("%s|%d", l.uuid, time.Now().UnixNano()/1e6)
-	succ := l.store.SetIfAbsent(key, val, l.expire)
+	succ := l.store.SetIfAbsent(lockKey, val, l.expire)
 	return succ
 }
 
 func (l *DistLockImpl) UnLock(target interface{}) bool {
 	key := l.key(target)
-	uuid, _ := parseLockData(l.store.Get(key))
+	lockKey := &LockKey{l.namespace, key}
+	uuid, _ := parseLockData(l.store.Get(lockKey))
 	if uuid != l.uuid {
 		// only the lock who locked it can unlock
 		return false
 	}
-	l.store.Delete(key)
+	l.store.Delete(lockKey)
 	return true
 }

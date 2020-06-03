@@ -9,7 +9,7 @@ import (
 )
 
 func DoTest(t *testing.T, s distlock.Store) {
-	key := "demo"
+	key := &distlock.LockKey{"testns", "demo"}
 	expire := time.Second * 2
 	s.Delete(key)
 
