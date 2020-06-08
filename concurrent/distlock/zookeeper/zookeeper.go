@@ -15,6 +15,10 @@ import (
 
 // Structure: /lock/<namespace>/[0-127]/<md5(key)>
 
+type ACL struct {
+	Username, Password string
+}
+
 type ZookeeperLocker struct {
 	conn      *zk.Conn
 	namespace string
@@ -32,6 +36,10 @@ func New(namespace string, ttl int64, addrs []string) *ZookeeperLocker {
 }
 
 func NewWithRoot(root, namespace string, ttl int64, addrs []string) *ZookeeperLocker {
+	return NewWithRootAcl(root, namespace, ttl, addrs, nil)
+}
+
+func NewWithRootAcl(root, namespace string, ttl int64, addrs []string, acl *ACL) *ZookeeperLocker {
 	root = strings.TrimRight(root, "/")
 	conn, eventC, err := zk.Connect(
 		addrs,
@@ -63,6 +71,12 @@ LOOP_CHECK:
 		ttl:       ttl,
 		prefix:    root + "/" + strings.ReplaceAll(namespace, "/", "_"),
 		acl:       zk.WorldACL(zk.PermAll),
+	}
+	if acl != nil && acl.Username != "" {
+		instance.acl = []zk.ACL{}
+		instance.acl = append(instance.acl, zk.WorldACL(zk.PermRead)...)
+		instance.acl = append(instance.acl, zk.DigestACL(zk.PermAll, acl.Username, acl.Password)...)
+		conn.AddAuth("digest", []byte(acl.Username+":"+acl.Password))
 	}
 	instance.initialize()
 	return instance
