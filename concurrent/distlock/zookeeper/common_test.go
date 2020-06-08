@@ -61,9 +61,7 @@ func TestInitialize(t *testing.T) {
 	assert.True(t, store.exists("/demolock"))
 	assert.True(t, store.exists("/demolock/test"))
 	assert.True(t, store.exists("/demolock/test/0"))
-	assert.True(t, store.exists("/demolock/test/2"))
-	assert.True(t, store.exists("/demolock/test/127"))
-	assert.False(t, store.exists("/demolock/test/128"))
+	assert.True(t, store.exists("/demolock/test/1"))
 
 	removePath(store.conn, "/demolock")
 	store.Close()

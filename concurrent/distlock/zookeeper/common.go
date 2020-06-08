@@ -49,7 +49,7 @@ func (z *ZookeeperLocker) initialize() {
 	if !z.exists(z.prefix) {
 		z.createPath(z.prefix, true)
 	}
-	for i := 0; i < 128; i++ {
+	for i := 0; i < z.shards; i++ {
 		path := z.prefix + "/" + strconv.Itoa(i)
 		if z.exists(path) {
 			continue
@@ -66,7 +66,7 @@ func (z *ZookeeperLocker) key(lockKey *distlock.LockKey) string {
 	hash := md5.Sum([]byte(lockKey.Key))
 	b.WriteString(z.prefix)
 	b.WriteString("/")
-	b.WriteString(strconv.Itoa(int(hash[0]) % 128))
+	b.WriteString(strconv.Itoa(int(hash[0]) % z.shards))
 	b.WriteString("/")
 	b.WriteString(lockKey.Key)
 	return b.String()
