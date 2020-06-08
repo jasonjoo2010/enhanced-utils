@@ -44,7 +44,7 @@ func DoTest(t *testing.T, s distlock.Store) {
 }
 
 func DoTestMutex(t *testing.T, s distlock.Store) {
-	lock := distlock.NewMutex("test", 2*time.Second, s)
+	lock := distlock.NewMutex("testns", 2*time.Second, s)
 	id := 3333
 	id1 := 4444
 
@@ -68,8 +68,8 @@ func DoTestMutex(t *testing.T, s distlock.Store) {
 }
 
 func DoTestReentry(t *testing.T, s distlock.Store) {
-	lock := distlock.NewReentry("test", 2*time.Second, s)
-	lock1 := distlock.NewReentry("test", 2*time.Second, s)
+	lock := distlock.NewReentry("testns", 2*time.Second, s)
+	lock1 := distlock.NewReentry("testns", 2*time.Second, s)
 	id := 3333
 	id1 := 4444
 
