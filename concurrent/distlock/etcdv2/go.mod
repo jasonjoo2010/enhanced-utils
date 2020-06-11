@@ -1,4 +1,4 @@
-module github.com/jasonjoo2010/enhanced-utils/concurrent/distlock/redis
+module github.com/jasonjoo2010/enhanced-utils/concurrent/distlock/etcdv2
 
 go 1.14
 
