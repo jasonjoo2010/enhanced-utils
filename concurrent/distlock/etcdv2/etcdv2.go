@@ -88,6 +88,7 @@ func (s *Etcdv2Locker) Exists(lockKey *distlock.LockKey) bool {
 			return false
 		}
 		logrus.Warn("Fetch data from etcdv2 failed: ", err.Error())
+		return false
 	}
 	return resp.Node.Value != ""
 }
