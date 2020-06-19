@@ -57,13 +57,13 @@ func DoTestMutex(t *testing.T, s distlock.Store) {
 	assert.True(t, lock.TryLock(id))
 	assert.True(t, lock.UnLock(id))
 
-	assert.NoError(t, lock.Lock(id, 1*time.Second))
-	assert.Error(t, lock.Lock(id, 500*time.Millisecond))
-	assert.NoError(t, lock.Lock(id, 2*time.Second))
-	assert.Error(t, lock.Lock(id, 1*time.Second))
-	assert.Error(t, lock.Lock(id, 500*time.Millisecond))
-	lock.Keep(id)
-	assert.Error(t, lock.Lock(id, 1500*time.Millisecond))
+	assert.NoError(t, lock.Lock(id, 1*time.Second))       // first lock
+	assert.Error(t, lock.Lock(id, 500*time.Millisecond))  // wait to lock failed
+	assert.NoError(t, lock.Lock(id, 2*time.Second))       // wait to success
+	assert.Error(t, lock.Lock(id, 1*time.Second))         // wait to fail
+	assert.Error(t, lock.Lock(id, 500*time.Millisecond))  // wait to fail
+	lock.Keep(id)                                         // renew
+	assert.Error(t, lock.Lock(id, 1500*time.Millisecond)) // wait to fail
 	assert.True(t, lock.UnLock(id))
 }
 

@@ -73,12 +73,15 @@ func parseLockData(data string) (uuid string, created int64) {
 	return
 }
 
-func (l *DistLockImpl) key(target interface{}) string {
+func (l *DistLockImpl) key(target interface{}) *LockKey {
 	ns := l.namespace
 	if ns == "" {
 		ns = "distributed-lock"
 	}
-	return fmt.Sprintf("lock::%s::%v", ns, target)
+	return &LockKey{
+		Namespace: ns,
+		Key:       fmt.Sprintf("%v", target),
+	}
 }
 
 func (l *DistLockImpl) Close() {
@@ -86,11 +89,11 @@ func (l *DistLockImpl) Close() {
 }
 
 func (l *DistLockImpl) Keep(target interface{}) {
-	key := l.key(target)
-	valid, myself := l.verify(key)
+	lockKey := l.key(target)
+	valid, myself := l.verify(lockKey)
 	if valid && myself {
 		val := fmt.Sprintf("%s|%d", l.uuid, time.Now().UnixNano()/1e6)
-		l.store.Set(&LockKey{l.namespace, key}, val, l.expire)
+		l.store.Set(lockKey, val, l.expire)
 	}
 }
 
@@ -109,8 +112,7 @@ func (l *DistLockImpl) Lock(target interface{}, wait time.Duration) error {
 // verify an existed lock data structure and return true when valid
 //	valid indicates whether the lock is valid
 //	myself indicates whether the owner is myself
-func (l *DistLockImpl) verify(key string) (valid bool, myself bool) {
-	lockKey := &LockKey{l.namespace, key}
+func (l *DistLockImpl) verify(lockKey *LockKey) (valid bool, myself bool) {
 	val := l.store.Get(lockKey)
 	// XXX: Pay attention to the phantom reads of redis (double reading could solve it, but confirmed to do that)
 	uuid, created := parseLockData(val)
@@ -127,11 +129,10 @@ func (l *DistLockImpl) verify(key string) (valid bool, myself bool) {
 }
 
 func (l *DistLockImpl) TryLock(target interface{}) bool {
-	key := l.key(target)
-	lockKey := &LockKey{l.namespace, key}
+	lockKey := l.key(target)
 	if l.store.Exists(lockKey) {
 		// verify the lock
-		if valid, myself := l.verify(key); valid {
+		if valid, myself := l.verify(lockKey); valid {
 			// valid lock
 			if l.reentry && myself {
 				// allow reentry, check whether already locked and update it
@@ -151,8 +152,7 @@ func (l *DistLockImpl) TryLock(target interface{}) bool {
 }
 
 func (l *DistLockImpl) UnLock(target interface{}) bool {
-	key := l.key(target)
-	lockKey := &LockKey{l.namespace, key}
+	lockKey := l.key(target)
 	uuid, _ := parseLockData(l.store.Get(lockKey))
 	if uuid != l.uuid {
 		// only the lock who locked it can unlock
