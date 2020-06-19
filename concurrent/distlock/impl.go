@@ -98,15 +98,21 @@ func (l *DistLockImpl) Keep(target interface{}) {
 }
 
 func (l *DistLockImpl) Lock(target interface{}, wait time.Duration) error {
-	for wait > 0 {
+	timer := time.NewTimer(wait)
+	for {
 		succ := l.TryLock(target)
 		if succ {
+			timer.Stop()
 			return nil
 		}
-		time.Sleep(TRY_INTERVAL)
-		wait -= TRY_INTERVAL
+		select {
+		case <-timer.C:
+			// timeout
+			return LockFailed
+		default:
+			time.Sleep(TRY_INTERVAL)
+		}
 	}
-	return LockFailed
 }
 
 // verify an existed lock data structure and return true when valid
