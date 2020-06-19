@@ -14,6 +14,15 @@ mutex_lock := distlock.NewMutex("project-namespace", 60*time.Second, redis.New([
 reentry_lock := distlock.NewReentry("project-namespace", 60*time.Second, redis.New([]string{"127.0.0.1:6379"}))
 ```
 
+### Storage Supported for Lock
+
+* Mock(memory)
+* Redis
+* Etcdv2
+* Etcdv3
+* Zookeeper
+* Database
+
 # String
 
 ## Convertion
