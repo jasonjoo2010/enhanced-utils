@@ -5,7 +5,7 @@ go 1.14
 require (
 	github.com/coreos/etcd v3.3.22+incompatible
 	github.com/coreos/go-semver v0.3.0 // indirect
-	github.com/jasonjoo2010/enhanced-utils v0.0.0-20200608071141-0f10b99c6fe4
+	github.com/jasonjoo2010/enhanced-utils v0.0.1
 	github.com/onsi/ginkgo v1.12.3 // indirect
 	github.com/sirupsen/logrus v1.4.2
 )

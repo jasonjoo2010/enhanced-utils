@@ -8,7 +8,7 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f // indirect
 	github.com/google/uuid v1.1.1 // indirect
-	github.com/jasonjoo2010/enhanced-utils v0.0.0-20200608071141-0f10b99c6fe4
+	github.com/jasonjoo2010/enhanced-utils v0.0.1
 	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.5.1
 	go.uber.org/zap v1.15.0 // indirect
