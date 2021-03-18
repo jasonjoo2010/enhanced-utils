@@ -3,10 +3,7 @@ package strutils
 import (
 	"math"
 	"math/rand"
-	"time"
 )
-
-var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 const (
 	CHARS_LOWCASE = "abcdefghijklmnopqrstuvwxyz" +
@@ -33,18 +30,18 @@ func RandNumbers(length int) string {
 
 // RandUint64 returns a uint64 random number with max specified width
 func RandUint64(max_width int) uint64 {
-	return seededRand.Uint64() % uint64(math.Pow10(max_width))
+	return rand.Uint64() % uint64(math.Pow10(max_width))
 }
 
 func randString(length int, available string) string {
 	mod := uint64(len(available))
-	r := seededRand.Uint64()
+	r := rand.Uint64()
 	arr := make([]byte, length)
 	for i := 0; i < length; i++ {
 		arr[i] = available[r%mod]
 
 		if r < mod {
-			r = seededRand.Uint64()
+			r = rand.Uint64()
 		} else {
 			r /= mod
 		}
